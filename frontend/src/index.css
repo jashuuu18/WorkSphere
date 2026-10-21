@@ -1,0 +1,427 @@
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  color: #172033;
+  background: #f4f7fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-height: 76px;
+  padding: 14px 5%;
+  background: white;
+  border-bottom: 1px solid #e3e9f2;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.brand-symbol,
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: white;
+  background: #3158d8;
+  border-radius: 12px;
+  font-weight: 800;
+}
+
+.main-nav {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.main-nav a {
+  padding: 9px 12px;
+  color: #5d687c;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.main-nav a:hover,
+.main-nav a.active {
+  color: #2449c6;
+  background: #edf2ff;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.role-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 4px 8px;
+  color: #2748b4;
+  background: #edf2ff;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.logout-button,
+.secondary-button {
+  padding: 10px 14px;
+  color: #334155;
+  background: white;
+  border: 1px solid #d6deea;
+  border-radius: 9px;
+  font-weight: 600;
+}
+
+.logout-button:hover,
+.secondary-button:hover {
+  background: #f1f5f9;
+}
+
+.page-container {
+  width: min(1200px, 92%);
+  margin: 0 auto;
+  padding: 36px 0 56px;
+}
+
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.page-heading h1 {
+  margin: 5px 0 8px;
+  color: #101828;
+  font-size: clamp(25px, 4vw, 34px);
+}
+
+.eyebrow {
+  margin: 0;
+  color: #3158d8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+}
+
+.muted {
+  color: #68758b;
+  line-height: 1.6;
+}
+
+.dashboard-section {
+  margin-top: 30px;
+}
+
+.dashboard-section > h2 {
+  margin: 0 0 16px;
+  color: #1c2940;
+  font-size: 18px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  min-width: 0;
+  padding: 21px;
+  background: white;
+  border: 1px solid #e4eaf2;
+  border-radius: 15px;
+  box-shadow: 0 4px 14px rgb(24 39 75 / 3%);
+}
+
+.stat-label {
+  display: block;
+  color: #68758b;
+  font-size: 13px;
+}
+
+.stat-value {
+  margin: 13px 0 8px;
+  color: #1a2b4b;
+  font-size: clamp(22px, 3vw, 30px);
+  overflow-wrap: anywhere;
+}
+
+.stat-description {
+  margin: 0;
+  color: #8490a4;
+  font-size: 12px;
+}
+
+.payroll-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  padding: 22px;
+  background: white;
+  border: 1px solid #e4eaf2;
+  border-radius: 15px;
+}
+
+.payroll-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+
+.payroll-summary strong {
+  color: #172033;
+}
+
+.dashboard-footnote {
+  margin-top: 32px;
+  font-size: 12px;
+}
+
+.auth-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, #dbeafe, transparent 40%),
+    #f4f7fb;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgb(15 23 42 / 8%);
+}
+
+.auth-card h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 30px;
+}
+
+.auth-card h2 {
+  margin: 28px 0 8px;
+  font-size: 23px;
+}
+
+.auth-card .brand-mark {
+  margin-bottom: 16px;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-card label {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.auth-card input,
+.auth-card select,
+.auth-card textarea {
+  width: 100%;
+  padding: 12px 14px;
+  color: #172033;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  outline: none;
+}
+
+.auth-card input:focus {
+  border-color: #3158d8;
+  box-shadow: 0 0 0 3px rgb(49 88 216 / 12%);
+}
+
+.primary-button {
+  padding: 12px 16px;
+  color: white;
+  background: #3158d8;
+  border: 0;
+  border-radius: 9px;
+  font-weight: 700;
+}
+
+.auth-card .primary-button {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.primary-button:hover {
+  background: #2449c6;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.error-message,
+.error-panel {
+  margin-top: 18px;
+  padding: 14px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+}
+
+.footer-note {
+  margin: 26px 0 0;
+  color: #8490a4;
+  font-size: 12px;
+  text-align: center;
+}
+
+.page-loading {
+  padding: 60px 20px;
+  color: #64748b;
+  text-align: center;
+}
+
+.empty-state,
+.module-placeholder {
+  padding: 28px;
+  color: #64748b;
+  background: white;
+  border: 1px dashed #cbd5e1;
+  border-radius: 15px;
+  line-height: 1.6;
+}
+
+.module-placeholder h2 {
+  margin-top: 0;
+  color: #172033;
+}
+
+@media (max-width: 1000px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .main-nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .user-menu {
+    margin-left: auto;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payroll-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    padding: 14px 4%;
+  }
+
+  .main-nav {
+    gap: 2px;
+  }
+
+  .main-nav a {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .user-name {
+    max-width: 110px;
+    overflow-wrap: anywhere;
+  }
+
+  .page-container {
+    width: 92%;
+    padding-top: 25px;
+  }
+
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .stats-grid,
+  .payroll-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-card {
+    padding: 26px;
+  }
+}
