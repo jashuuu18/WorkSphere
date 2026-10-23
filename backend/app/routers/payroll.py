@@ -1,12 +1,19 @@
+
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_roles
 from app.models import Employee, Payroll, User, UserRole
-from app.schemas import PayrollCreate, PayrollResponse
+from app.schemas import (
+    PayrollCreate,
+    PayrollResponse,
+    PayrollSummaryResponse,
+    PayslipResponse,
+)
 
 router = APIRouter(prefix="/payroll", tags=["Payroll Management"])
 
@@ -21,7 +28,10 @@ def money(value: float) -> float:
     )
 
 
-# HR/Admin create a payroll record using the employee's salary.
+# --------------------------------------------------
+# CREATE PAYROLL — HR / ADMIN
+# --------------------------------------------------
+
 @router.post(
     "/",
     response_model=PayrollResponse,
@@ -34,9 +44,11 @@ def create_payroll(
         require_roles(UserRole.HR, UserRole.ADMIN)
     ),
 ):
-    employee = db.query(Employee).filter(
-        Employee.id == payroll_data.employee_id
-    ).first()
+    employee = (
+        db.query(Employee)
+        .filter(Employee.id == payroll_data.employee_id)
+        .first()
+    )
 
     if employee is None:
         raise HTTPException(
@@ -44,10 +56,14 @@ def create_payroll(
             detail="Employee not found",
         )
 
-    existing_payroll = db.query(Payroll).filter(
-        Payroll.employee_id == payroll_data.employee_id,
-        Payroll.month == payroll_data.month,
-    ).first()
+    existing_payroll = (
+        db.query(Payroll)
+        .filter(
+            Payroll.employee_id == payroll_data.employee_id,
+            Payroll.month == payroll_data.month,
+        )
+        .first()
+    )
 
     if existing_payroll:
         raise HTTPException(
@@ -76,14 +92,20 @@ def create_payroll(
         month=payroll_data.month,
     )
 
-    db.add(payroll)
-    db.commit()
-    db.refresh(payroll)
+    try:
+        db.add(payroll)
+        db.commit()
+        db.refresh(payroll)
+        return payroll
+    except Exception:
+        db.rollback()
+        raise
 
-    return payroll
 
+# --------------------------------------------------
+# MY PAYROLL HISTORY — AUTHENTICATED EMPLOYEE
+# --------------------------------------------------
 
-# Employees can view only their own payroll records.
 @router.get(
     "/me",
     response_model=list[PayrollResponse],
@@ -92,9 +114,11 @@ def my_payroll(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    employee = db.query(Employee).filter(
-        Employee.user_id == current_user.id
-    ).first()
+    employee = (
+        db.query(Employee)
+        .filter(Employee.user_id == current_user.id)
+        .first()
+    )
 
     if employee is None:
         raise HTTPException(
@@ -110,7 +134,111 @@ def my_payroll(
     )
 
 
-# HR/Admin can view payroll for all employees and filter results.
+# --------------------------------------------------
+# MONTHLY PAYROLL SUMMARY — HR / ADMIN
+# --------------------------------------------------
+
+@router.get(
+    "/summary",
+    response_model=PayrollSummaryResponse,
+)
+def payroll_summary(
+    month: str | None = Query(
+        default=None,
+        pattern=r"^\d{4}-(0[1-9]|1[0-2])$",
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.HR, UserRole.ADMIN)
+    ),
+):
+    query = db.query(
+        func.count(func.distinct(Payroll.employee_id)),
+        func.coalesce(func.sum(Payroll.basic_salary), 0),
+        func.coalesce(func.sum(Payroll.bonus), 0),
+        func.coalesce(func.sum(Payroll.deductions), 0),
+        func.coalesce(func.sum(Payroll.net_salary), 0),
+    )
+
+    if month is not None:
+        query = query.filter(Payroll.month == month)
+
+    result = query.one()
+
+    return {
+        "month": month,
+        "employee_count": result[0],
+        "total_basic_salary": money(result[1]),
+        "total_bonus": money(result[2]),
+        "total_deductions": money(result[3]),
+        "total_net_salary": money(result[4]),
+    }
+
+
+# --------------------------------------------------
+# DETAILED PAYSLIP — EMPLOYEE / HR / ADMIN
+# --------------------------------------------------
+
+@router.get(
+    "/{payroll_id}/payslip",
+    response_model=PayslipResponse,
+)
+def get_payslip(
+    payroll_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    payroll = (
+        db.query(Payroll)
+        .filter(Payroll.id == payroll_id)
+        .first()
+    )
+
+    if payroll is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Payroll record not found",
+        )
+
+    employee = (
+        db.query(Employee)
+        .filter(Employee.id == payroll.employee_id)
+        .first()
+    )
+
+    if employee is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Employee not found",
+        )
+
+    # Employees can access only their own payslips.
+    if current_user.role not in (UserRole.HR, UserRole.ADMIN):
+        if employee.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own payslip",
+            )
+
+    return {
+        "id": payroll.id,
+        "employee_id": employee.id,
+        "employee_name": employee.full_name,
+        "designation": employee.designation,
+        "department": employee.department,
+        "month": payroll.month,
+        "basic_salary": payroll.basic_salary,
+        "bonus": payroll.bonus,
+        "deductions": payroll.deductions,
+        "net_salary": payroll.net_salary,
+        "created_at": payroll.created_at,
+    }
+
+
+# --------------------------------------------------
+# LIST PAYROLL — HR / ADMIN
+# --------------------------------------------------
+
 @router.get(
     "/",
     response_model=list[PayrollResponse],

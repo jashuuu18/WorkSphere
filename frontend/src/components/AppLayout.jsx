@@ -5,7 +5,10 @@ import { useAuth } from "../context/AuthContext";
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const isManager = ["HR", "ADMIN"].includes(user?.role);
+
+  const role = String(user?.role || "").toUpperCase();
+  const isManager = ["HR", "ADMIN"].includes(role);
+  const isAdmin = role === "ADMIN";
 
   function handleLogout() {
     logout();
@@ -17,10 +20,14 @@ export default function AppLayout() {
     { label: "My Profile", path: "/profile" },
     { label: "Attendance", path: "/attendance" },
     { label: "Leave Management", path: "/leaves" },
+    { label: "Leave Balances", path: "/leave-balances" },
     { label: "Payroll", path: "/payroll" },
     { label: "Notifications", path: "/notifications" },
     ...(isManager
       ? [{ label: "Employees", path: "/employees" }]
+      : []),
+    ...(isAdmin
+      ? [{ label: "User Management", path: "/users" }]
       : []),
   ];
 
@@ -46,8 +53,11 @@ export default function AppLayout() {
 
         <div style={styles.userArea}>
           <span style={styles.username}>
-            {user?.username || "User"}
+            {user?.username || user?.email || "User"}
           </span>
+
+          <span style={styles.role}>{role}</span>
+
           <button
             type="button"
             onClick={handleLogout}
@@ -58,9 +68,9 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <div style={styles.content}>
+      <main style={styles.content}>
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 }
@@ -107,10 +117,16 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 12,
+    flexWrap: "wrap",
   },
   username: {
     color: "#334155",
     fontSize: 14,
+  },
+  role: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: 700,
   },
   logout: {
     background: "#dc2626",

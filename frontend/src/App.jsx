@@ -8,10 +8,12 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Attendance from "./pages/Attendance";
 import Leaves from "./pages/Leaves";
+import LeaveBalances from "./pages/LeaveBalances";
 import Payroll from "./pages/Payroll";
 import MyProfile from "./pages/MyProfile";
 import Employees from "./pages/Employees";
 import Notifications from "./pages/Notifications";
+import UserManagement from "./pages/UserManagement";
 
 export default function App() {
   return (
@@ -30,11 +32,9 @@ export default function App() {
             <Route path="/profile" element={<MyProfile />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/leaves" element={<Leaves />} />
+            <Route path="/leave-balances" element={<LeaveBalances />} />
             <Route path="/payroll" element={<Payroll />} />
-            <Route
-              path="/notifications"
-              element={<Notifications />}
-            />
+            <Route path="/notifications" element={<Notifications />} />
 
             <Route
               element={
@@ -42,6 +42,12 @@ export default function App() {
               }
             >
               <Route path="/employees" element={<Employees />} />
+            </Route>
+
+            <Route
+              element={<ProtectedRoute allowedRoles={["ADMIN"]} />}
+            >
+              <Route path="/users" element={<UserManagement />} />
             </Route>
           </Route>
         </Route>

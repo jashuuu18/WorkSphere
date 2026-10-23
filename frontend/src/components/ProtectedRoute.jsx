@@ -6,10 +6,16 @@ export default function ProtectedRoute({ allowedRoles }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
+  
   if (loading) {
-    return <div className="page-loading">Loading WorkSphere...</div>;
+    return (
+      <div className="page-loading">
+        Loading WorkSphere...
+      </div>
+    );
   }
 
+  
   if (!user) {
     return (
       <Navigate
@@ -20,7 +26,11 @@ export default function ProtectedRoute({ allowedRoles }) {
     );
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  
+  if (
+    allowedRoles &&
+    !allowedRoles.includes(String(user.role || "").toUpperCase())
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 

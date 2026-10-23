@@ -1,21 +1,43 @@
 
 import { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
+
+function formatMinutes(minutes) {
+  if (minutes == null) return "—";
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  return `${hours}h ${remainingMinutes}m`;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+
+  return new Date(`${value}T00:00:00`).toLocaleDateString();
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+
+  return new Date(value).toLocaleString();
+}
 
 export default function Attendance() {
-  const { user } = useAuth();
-  const isManager = ["HR", "ADMIN"].includes(user?.role);
-
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
-  const [employeeId, setEmployeeId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [absenceDate, setAbsenceDate] = useState("");
+  const [absenceResult, setAbsenceResult] = useState(null);
+
+  // Change these values if your app uses different role names in localStorage.
+  const storedRole = localStorage.getItem("role") || "";
+  const role = storedRole.toUpperCase();
+  const canManageAttendance = ["HR", "ADMIN"].includes(role);
 
   const loadAttendance = useCallback(async () => {
     setLoading(true);
@@ -27,160 +49,188 @@ export default function Attendance() {
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
 
-      if (isManager && employeeId) {
-        params.employee_id = Number(employeeId);
-      }
+      const endpoint = canManageAttendance
+        ? "/attendance/"
+        : "/attendance/me";
 
-      const response = await api.get(
-        isManager ? "/attendance/" : "/attendance/me",
-        { params }
-      );
-
-      setRecords(Array.isArray(response.data) ? response.data : []);
+      const response = await api.get(endpoint, { params });
+      setRecords(response.data);
     } catch (err) {
       setError(
         err.response?.data?.detail ||
-          "Unable to load attendance records."
+          "Could not load attendance records."
       );
     } finally {
       setLoading(false);
     }
-  }, [isManager, employeeId, startDate, endDate]);
+  }, [startDate, endDate, canManageAttendance]);
 
   useEffect(() => {
     loadAttendance();
   }, [loadAttendance]);
 
-  async function performAction(action) {
-    setBusy(true);
+  async function performAttendanceAction(action) {
+    setWorking(true);
     setError("");
     setMessage("");
 
     try {
-      await api.post(`/attendance/${action}`);
+      const response = await api.post(`/attendance/${action}`);
 
       setMessage(
         action === "check-in"
-          ? "Check-in successful!"
-          : "Check-out successful!"
+          ? "Check-in recorded successfully."
+          : "Check-out recorded successfully."
       );
+
+      if (response.data) {
+        setMessage(
+          `${action === "check-in" ? "Check-in" : "Check-out"} recorded successfully.`
+        );
+      }
 
       await loadAttendance();
     } catch (err) {
-      const detail = err.response?.data?.detail;
       setError(
-        typeof detail === "string"
-          ? detail
-          : "Attendance action failed. Please try again."
+        err.response?.data?.detail ||
+          `Could not complete ${action}.`
       );
     } finally {
-      setBusy(false);
+      setWorking(false);
     }
   }
 
-  function formatDate(value) {
-    if (!value) return "—";
-    return String(value).slice(0, 10);
-  }
+  async function markAbsent(event) {
+    event.preventDefault();
 
-  function formatDateTime(value) {
-    if (!value) return "—";
+    if (!absenceDate) {
+      setError("Please select a date.");
+      return;
+    }
 
-    const date = new Date(value);
-    return Number.isNaN(date.getTime())
-      ? String(value)
-      : date.toLocaleString();
+    setWorking(true);
+    setError("");
+    setMessage("");
+    setAbsenceResult(null);
+
+    try {
+      const response = await api.post("/attendance/mark-absent", null, {
+        params: { attendance_date: absenceDate },
+      });
+
+      setAbsenceResult(response.data);
+      setMessage(response.data.message || "Absence marking completed.");
+      await loadAttendance();
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+          "Could not mark absent employees."
+      );
+    } finally {
+      setWorking(false);
+    }
   }
 
   return (
-    <main style={styles.page}>
-      <header style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Attendance Management</h1>
-          <p style={styles.subtitle}>
-            Track daily attendance and working hours.
-          </p>
+    <main className="attendance-page">
+      <h1>Attendance Management</h1>
+      <p>Track attendance, late arrivals, worked time, and overtime.</p>
+
+      {error && (
+        <div role="alert" className="attendance-alert attendance-error">
+          {typeof error === "string" ? error : JSON.stringify(error)}
         </div>
+      )}
 
-        {!isManager && (
-          <div style={styles.actions}>
-            <button
-              type="button"
-              style={styles.primaryButton}
-              disabled={busy}
-              onClick={() => performAction("check-in")}
-            >
-              {busy ? "Please wait..." : "Check In"}
-            </button>
+      {message && (
+        <div role="status" className="attendance-alert attendance-success">
+          {message}
+        </div>
+      )}
 
-            <button
-              type="button"
-              style={styles.secondaryButton}
-              disabled={busy}
-              onClick={() => performAction("check-out")}
-            >
-              Check Out
-            </button>
-          </div>
-        )}
-      </header>
+      {!canManageAttendance && (
+        <section className="attendance-actions">
+          <button
+            type="button"
+            disabled={working}
+            onClick={() => performAttendanceAction("check-in")}
+          >
+            {working ? "Please wait..." : "Check In"}
+          </button>
 
-      {message && <div style={styles.success}>{message}</div>}
-      {error && <div style={styles.error}>{error}</div>}
+          <button
+            type="button"
+            disabled={working}
+            onClick={() => performAttendanceAction("check-out")}
+          >
+            {working ? "Please wait..." : "Check Out"}
+          </button>
+        </section>
+      )}
 
-      <section style={styles.panel}>
-        <h2 style={styles.heading}>Filter Attendance</h2>
+      {canManageAttendance && (
+        <section className="attendance-panel">
+          <h2>Mark Absences</h2>
+          <p>
+            Marks active employees absent on an eligible weekday if they
+            have no attendance record and no approved leave.
+          </p>
 
-        <div style={styles.filters}>
-          {isManager && (
-            <label style={styles.field}>
-              Employee ID
-              <input
-                style={styles.input}
-                type="number"
-                min="1"
-                placeholder="All employees"
-                value={employeeId}
-                onChange={(event) => setEmployeeId(event.target.value)}
-              />
-            </label>
-          )}
-
-          <label style={styles.field}>
-            Start Date
+          <form onSubmit={markAbsent}>
+            <label htmlFor="absence-date">Attendance date</label>
             <input
-              style={styles.input}
+              id="absence-date"
+              type="date"
+              value={absenceDate}
+              onChange={(event) => setAbsenceDate(event.target.value)}
+              required
+            />
+
+            <button type="submit" disabled={working}>
+              {working ? "Processing..." : "Mark Absences"}
+            </button>
+          </form>
+
+          {absenceResult && (
+            <div className="attendance-result">
+              <p><strong>Date:</strong> {absenceResult.date}</p>
+              <p><strong>Marked absent:</strong> {absenceResult.marked_absent}</p>
+              <p><strong>Skipped existing records:</strong> {absenceResult.skipped_existing}</p>
+              <p><strong>Skipped approved leave:</strong> {absenceResult.skipped_on_approved_leave}</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="attendance-panel">
+        <h2>{canManageAttendance ? "All Attendance Records" : "My Attendance"}</h2>
+
+        <div className="attendance-filters">
+          <label>
+            Start date
+            <input
               type="date"
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
             />
           </label>
 
-          <label style={styles.field}>
-            End Date
+          <label>
+            End date
             <input
-              style={styles.input}
               type="date"
-              min={startDate || undefined}
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
             />
           </label>
 
-          <button
-            type="button"
-            style={styles.secondaryButton}
-            onClick={loadAttendance}
-            disabled={loading}
-          >
+          <button type="button" onClick={loadAttendance} disabled={loading}>
             Apply Filters
           </button>
 
           <button
             type="button"
-            style={styles.textButton}
             onClick={() => {
-              setEmployeeId("");
               setStartDate("");
               setEndDate("");
             }}
@@ -188,49 +238,42 @@ export default function Attendance() {
             Clear Filters
           </button>
         </div>
-      </section>
-
-      <section style={styles.panel}>
-        <h2 style={styles.heading}>
-          {isManager ? "Employee Attendance Records" : "My Attendance History"}
-        </h2>
 
         {loading ? (
-          <p style={styles.muted}>Loading attendance records...</p>
+          <p>Loading attendance...</p>
         ) : records.length === 0 ? (
-          <p style={styles.muted}>No attendance records found.</p>
+          <p>No attendance records found for the selected dates.</p>
         ) : (
-          <div style={styles.tableContainer}>
-            <table style={styles.table}>
+          <div className="attendance-table-wrapper">
+            <table>
               <thead>
                 <tr>
-                  {isManager && <th style={styles.th}>Employee ID</th>}
-                  <th style={styles.th}>Date</th>
-                  <th style={styles.th}>Check In</th>
-                  <th style={styles.th}>Check Out</th>
-                  <th style={styles.th}>Status</th>
+                  <th>Date</th>
+                  {canManageAttendance && <th>Employee ID</th>}
+                  <th>Status</th>
+                  <th>Check In</th>
+                  <th>Check Out</th>
+                  <th>Late</th>
+                  <th>Worked</th>
+                  <th>Overtime</th>
                 </tr>
               </thead>
 
               <tbody>
                 {records.map((record) => (
                   <tr key={record.id}>
-                    {isManager && (
-                      <td style={styles.td}>{record.employee_id}</td>
-                    )}
-
-                    <td style={styles.td}>{formatDate(record.date)}</td>
-                    <td style={styles.td}>
-                      {formatDateTime(record.check_in)}
+                    <td>{formatDate(record.date)}</td>
+                    {canManageAttendance && <td>{record.employee_id}</td>}
+                    <td>{record.status}</td>
+                    <td>{formatDateTime(record.check_in)}</td>
+                    <td>{formatDateTime(record.check_out)}</td>
+                    <td>
+                      {record.is_late
+                        ? `Yes (${record.late_minutes} min)`
+                        : "No"}
                     </td>
-                    <td style={styles.td}>
-                      {formatDateTime(record.check_out)}
-                    </td>
-                    <td style={styles.td}>
-                      <span style={styles.status}>
-                        {record.status}
-                      </span>
-                    </td>
+                    <td>{formatMinutes(record.worked_minutes)}</td>
+                    <td>{formatMinutes(record.overtime_minutes)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -241,133 +284,3 @@ export default function Attendance() {
     </main>
   );
 }
-
-const styles = {
-  page: {
-    padding: "24px",
-    maxWidth: "1200px",
-    margin: "0 auto",
-    boxSizing: "border-box",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "16px",
-    marginBottom: "24px",
-  },
-  title: {
-    margin: 0,
-    fontSize: "30px",
-    color: "#172554",
-  },
-  subtitle: {
-    color: "#64748b",
-    marginTop: "8px",
-  },
-  actions: {
-    display: "flex",
-    gap: "10px",
-    flexWrap: "wrap",
-  },
-  panel: {
-    background: "#ffffff",
-    padding: "20px",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    marginBottom: "20px",
-  },
-  heading: {
-    marginTop: 0,
-    fontSize: "19px",
-    color: "#1e293b",
-  },
-  filters: {
-    display: "flex",
-    alignItems: "end",
-    flexWrap: "wrap",
-    gap: "14px",
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "7px",
-    color: "#475569",
-    fontSize: "14px",
-  },
-  input: {
-    padding: "10px 12px",
-    border: "1px solid #cbd5e1",
-    borderRadius: "7px",
-    minWidth: "150px",
-    fontSize: "14px",
-    boxSizing: "border-box",
-  },
-  primaryButton: {
-    background: "#2563eb",
-    color: "#ffffff",
-    border: 0,
-    padding: "11px 16px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-  secondaryButton: {
-    background: "#f1f5f9",
-    color: "#1e293b",
-    border: "1px solid #cbd5e1",
-    padding: "10px 14px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-  textButton: {
-    background: "transparent",
-    color: "#2563eb",
-    border: 0,
-    padding: "10px",
-    cursor: "pointer",
-  },
-  tableContainer: {
-    width: "100%",
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    textAlign: "left",
-  },
-  th: {
-    padding: "12px",
-    background: "#f8fafc",
-    borderBottom: "1px solid #e2e8f0",
-    whiteSpace: "nowrap",
-  },
-  td: {
-    padding: "12px",
-    borderBottom: "1px solid #e2e8f0",
-  },
-  status: {
-    background: "#dbeafe",
-    color: "#1d4ed8",
-    borderRadius: "20px",
-    padding: "4px 9px",
-    fontSize: "12px",
-  },
-  muted: {
-    color: "#64748b",
-  },
-  success: {
-    background: "#dcfce7",
-    color: "#166534",
-    padding: "12px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-  },
-  error: {
-    background: "#fee2e2",
-    color: "#991b1b",
-    padding: "12px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-  },
-};

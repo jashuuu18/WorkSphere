@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -24,9 +25,11 @@ def register_user(
     user_data: UserRegister,
     db: Session = Depends(get_db),
 ):
+    email = str(user_data.email).strip().lower()
+    username = user_data.username.strip()
+
     existing_user = db.query(User).filter(
-        (User.email == user_data.email)
-        | (User.username == user_data.username)
+        (User.email == email) | (User.username == username)
     ).first()
 
     if existing_user:
@@ -36,16 +39,16 @@ def register_user(
         )
 
     user = User(
-        username=user_data.username,
-        email=str(user_data.email).lower(),
+        username=username,
+        email=email,
         hashed_password=hash_password(user_data.password),
         role=UserRole.EMPLOYEE,
+        is_active=True,
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
-
     return user
 
 
@@ -55,8 +58,7 @@ def login_user(
     db: Session = Depends(get_db),
 ):
     # Enter the user's email in Swagger's username field.
-    email = form_data.username.lower()
-
+    email = form_data.username.strip().lower()
     user = db.query(User).filter(User.email == email).first()
 
     if (
@@ -70,6 +72,12 @@ def login_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is inactive. Contact an administrator.",
         )
 
     access_token = create_access_token(

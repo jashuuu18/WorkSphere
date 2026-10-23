@@ -10,7 +10,9 @@ from app.auth import ALGORITHM, SECRET_KEY
 from app.database import get_db
 from app.models import User, UserRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login"
+)
 
 
 def get_current_user(
@@ -29,9 +31,16 @@ def get_current_user(
             SECRET_KEY,
             algorithms=[ALGORITHM],
         )
-        user_id = payload.get("sub")
 
-        if not isinstance(user_id, str) or not user_id.isdigit():
+        user_id = payload.get("sub")
+        token_role = payload.get("role")
+
+        if (
+            not isinstance(user_id, str)
+            or not user_id.isdigit()
+            or not isinstance(token_role, str)
+            or token_role not in UserRole.__members__
+        ):
             raise credentials_error
 
     except InvalidTokenError:
@@ -43,6 +52,19 @@ def get_current_user(
 
     if user is None:
         raise credentials_error
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is inactive. Contact an administrator.",
+        )
+
+    if user.role.value != token_role:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your role has changed. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     return user
 
@@ -56,6 +78,7 @@ def require_roles(*allowed_roles: UserRole):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to access this resource",
             )
+
         return current_user
 
     return role_checker

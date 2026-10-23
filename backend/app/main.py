@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
 from app.dependencies import require_roles
 from app.models import User, UserRole
-from app.routers import auth, employees, attendance, leaves, payroll, dashboard, notifications
+from app.routers import auth, employees, attendance, leaves, leave_policies, payroll, dashboard, notifications, users
 
 # Create database tables for development.
 Base.metadata.create_all(bind=engine)
@@ -33,10 +33,11 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(employees.router, prefix="/api/v1")
 app.include_router(attendance.router, prefix="/api/v1")
 app.include_router(leaves.router, prefix="/api/v1")
+app.include_router(leave_policies.router, prefix="/api/v1")
 app.include_router(payroll.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
-
+app.include_router(users.router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Health"])

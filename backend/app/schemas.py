@@ -9,7 +9,7 @@ from pydantic import (
     model_validator,
 )
 from typing import Literal
-from app.models import EmployeeStatus, LeaveStatus, LeaveType
+from app.models import EmployeeStatus, LeaveStatus, LeaveType, UserRole
 
 
 # ---------------- AUTHENTICATION SCHEMAS ----------------
@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     role: str
+    is_active: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -120,15 +121,21 @@ from datetime import date as attendance_date, datetime
 from pydantic import ConfigDict, model_validator
 
 
+
 class AttendanceResponse(BaseModel):
     id: int
     employee_id: int
-    check_in: datetime | None
-    check_out: datetime | None
+    check_in: datetime | None = None
+    check_out: datetime | None = None
     date: attendance_date
     status: str
+    is_late: bool = False
+    late_minutes: int = 0
+    worked_minutes: int | None = None
+    overtime_minutes: int = 0
 
     model_config = ConfigDict(from_attributes=True)
+
 
 
 # ---------------- LEAVE MANAGEMENT SCHEMAS ----------------
@@ -207,3 +214,100 @@ class NotificationResponse(BaseModel):
 
 class UnreadNotificationCount(BaseModel):
     unread_count: int
+
+
+
+# ---------------- LEAVE POLICY & BALANCE SCHEMAS ----------------
+
+class LeavePolicyCreate(BaseModel):
+    leave_type: LeaveType
+    total_days_allowed: int = Field(ge=0, le=365)
+
+
+class LeavePolicyResponse(BaseModel):
+    id: int
+    leave_type: LeaveType
+    total_days_allowed: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LeaveBalanceResponse(BaseModel):
+    id: int
+    employee_id: int
+    leave_type: LeaveType
+    remaining_days: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------- PAYROLL ENHANCEMENT SCHEMAS ----------------
+
+class PayrollSummaryResponse(BaseModel):
+    month: str | None = None
+    employee_count: int
+    total_basic_salary: float
+    total_bonus: float
+    total_deductions: float
+    total_net_salary: float
+
+
+class PayslipResponse(BaseModel):
+    id: int
+    employee_id: int
+    employee_name: str
+    designation: str
+    department: str
+    month: str
+    basic_salary: float
+    bonus: float
+    deductions: float
+    net_salary: float
+    created_at: datetime
+
+
+# ---------------- ADMIN USER MANAGEMENT SCHEMAS ----------------
+
+class AdminUserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    role: UserRole = UserRole.EMPLOYEE
+    is_active: bool = True
+
+    @field_validator("username")
+    @classmethod
+    def clean_username(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("Username must contain at least 3 characters")
+        return value
+
+
+class AdminUserUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=50)
+    email: EmailStr | None = None
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    role: UserRole | None = None
+    is_active: bool | None = None
+
+    @field_validator("username")
+    @classmethod
+    def clean_username(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("Username must contain at least 3 characters")
+        return value
+
+    @model_validator(mode="after")
+    def validate_update(self):
+        if not self.model_fields_set:
+            raise ValueError("Provide at least one field to update")
+
+        for field in self.model_fields_set:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+
+        return self

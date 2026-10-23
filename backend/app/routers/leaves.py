@@ -9,6 +9,8 @@ from app.dependencies import get_current_user, require_roles
 from app.models import (
     Employee,
     Leave,
+    LeaveBalance,
+    LeavePolicy,
     LeaveStatus,
     LeaveType,
     User,
@@ -16,6 +18,7 @@ from app.models import (
 )
 from app.schemas import LeaveCreate, LeaveDecision, LeaveResponse
 from app.notifications import create_notification
+
 
 router = APIRouter(
     prefix="/leaves",
@@ -179,12 +182,79 @@ def decide_leave_request(
             detail="This leave request has already been decided",
         )
 
-    if decision_data.decision == "APPROVED":
-        leave.status = LeaveStatus.APPROVED
-    else:
-        leave.status = LeaveStatus.REJECTED
-
     try:
+        if decision_data.decision == "APPROVED":
+            # Count calendar days, including both start and end dates.
+            requested_days = (
+                leave.end_date - leave.start_date
+            ).days + 1
+
+            if requested_days <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Leave end date must not be before start date",
+                )
+
+            # Find the policy for this leave type.
+            policy = (
+                db.query(LeavePolicy)
+                .filter(
+                    LeavePolicy.leave_type == leave.leave_type
+                )
+                .first()
+            )
+
+            if policy is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "No leave policy has been configured for "
+                        f"{leave.leave_type.value} leave"
+                    ),
+                )
+
+            # Find this employee's balance.
+            balance = (
+                db.query(LeaveBalance)
+                .filter(
+                    LeaveBalance.employee_id == leave.employee_id,
+                    LeaveBalance.leave_type == leave.leave_type,
+                )
+                .with_for_update()
+                .first()
+            )
+
+            # Initialize the balance if it does not exist yet.
+            if balance is None:
+                balance = LeaveBalance(
+                    employee_id=leave.employee_id,
+                    leave_type=leave.leave_type,
+                    remaining_days=policy.total_days_allowed,
+                )
+                db.add(balance)
+                db.flush()
+
+            # Do not approve requests that exceed the balance.
+            if balance.remaining_days < requested_days:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"Insufficient {leave.leave_type.value.lower()} "
+                        f"leave balance. Available: "
+                        f"{balance.remaining_days} days; requested: "
+                        f"{requested_days} days."
+                    ),
+                )
+
+            # Deduct days only when approval is possible.
+            balance.remaining_days -= requested_days
+            leave.status = LeaveStatus.APPROVED
+
+        else:
+            # Rejected requests do not deduct leave days.
+            leave.status = LeaveStatus.REJECTED
+
+        # Notify the employee of the decision.
         create_notification(
             db=db,
             user_id=leave.employee.user_id,
@@ -196,7 +266,7 @@ def decide_leave_request(
             ),
         )
 
-        # Save the decision and notification together.
+        # Save the balance, leave decision, and notification together.
         db.commit()
         db.refresh(leave)
 

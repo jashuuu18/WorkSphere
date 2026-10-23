@@ -425,3 +425,29 @@ a {
     padding: 26px;
   }
 }
+
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #payslip-print,
+  #payslip-print * {
+    visibility: visible;
+  }
+
+  #payslip-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 20px;
+    box-shadow: none;
+  }
+
+  #payslip-print button {
+    display: none !important;
+  }
+}
