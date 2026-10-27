@@ -14,13 +14,22 @@ import MyProfile from "./pages/MyProfile";
 import Employees from "./pages/Employees";
 import Notifications from "./pages/Notifications";
 import UserManagement from "./pages/UserManagement";
+import Shifts from "./pages/Shifts";
+import LeaveCalendar from "./pages/LeaveCalendar";
+import Documents from "./pages/Documents";
+import PerformanceReviews from "./pages/PerformanceReviews";
+import Analytics from "./pages/Analytics";
+import SmartAlerts from "./pages/SmartAlerts";
+import AdvancedEmployeeSearch from "./pages/AdvancedEmployeeSearch";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public route */}
         <Route path="/login" element={<Login />} />
 
+        {/* All authenticated users */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route
@@ -33,25 +42,31 @@ export default function App() {
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/leaves" element={<Leaves />} />
             <Route path="/leave-balances" element={<LeaveBalances />} />
+            <Route path="/leave-calendar" element={<LeaveCalendar />} />
             <Route path="/payroll" element={<Payroll />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/smart-alerts" element={<SmartAlerts />} />
 
-            <Route
-              element={
-                <ProtectedRoute allowedRoles={["HR", "ADMIN"]} />
-              }
-            >
+            {/* EMPLOYEE, HR and ADMIN */}
+            <Route path="/shifts" element={<Shifts />} />
+            <Route path="/documents" element={<Documents />} />
+            <Route path="/performance-reviews" element={<PerformanceReviews />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/advanced-employee-search" element={<AdvancedEmployeeSearch />} />
+
+            {/* HR and ADMIN only */}
+            <Route element={<ProtectedRoute allowedRoles={["HR", "ADMIN"]} />}>
               <Route path="/employees" element={<Employees />} />
             </Route>
 
-            <Route
-              element={<ProtectedRoute allowedRoles={["ADMIN"]} />}
-            >
+            {/* ADMIN only */}
+            <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
               <Route path="/users" element={<UserManagement />} />
             </Route>
           </Route>
         </Route>
 
+        {/* Unknown routes */}
         <Route
           path="*"
           element={<Navigate to="/dashboard" replace />}

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user, require_roles
 from app.models import Employee, Payroll, User, UserRole
+from app.notifications import create_notification
 from app.schemas import (
     PayrollCreate,
     PayrollResponse,
@@ -94,9 +95,28 @@ def create_payroll(
 
     try:
         db.add(payroll)
+
+        # Save the payroll record in the current transaction.
+        db.flush()
+
+        # Add the notification for the employee who owns
+        # this payroll record.
+        create_notification(
+            db=db,
+            user_id=employee.user_id,
+            title="Payroll Processed",
+            message=(
+                f"Your payroll for {payroll.month} has been processed. "
+                f"Net salary: {net_salary:.2f}."
+            ),
+        )
+
+        # Commit payroll and notification together.
         db.commit()
         db.refresh(payroll)
+
         return payroll
+
     except Exception:
         db.rollback()
         raise

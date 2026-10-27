@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
@@ -67,7 +68,7 @@ class User(Base):
         default=UserRole.EMPLOYEE,
     )
 
-    # Module 13: Admin account activation control
+    #  Admin account activation control
     is_active = Column(
         Boolean,
         nullable=False,
@@ -309,3 +310,95 @@ class LeaveBalance(Base):
         nullable=False,
         default=0,
     )
+
+
+# ---------------- SHIFT MANAGEMENT ----------------
+
+class Shift(Base):
+    __tablename__ = "shifts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=False)
+
+
+class EmployeeShift(Base):
+    __tablename__ = "employee_shifts"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    employee_id = Column(
+        Integer,
+        ForeignKey("employees.id"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    shift_id = Column(
+        Integer,
+        ForeignKey("shifts.id"),
+        nullable=False,
+        index=True,
+    )
+
+    assigned_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+#---------------- DOCUMENT MODEL ----------------
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    employee_id = Column(
+        Integer,
+        ForeignKey("employees.id"),
+        nullable=False,
+        index=True,
+    )
+
+    file_name = Column(String(255), nullable=False)
+
+    # Internal generated filename; never expose this as a public file URL.
+    file_url = Column(String(500), nullable=False, unique=True)
+
+    uploaded_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+#---------------- PERFORMANCE REVIEW MODEL ----------------
+
+class PerformanceReview(Base):
+    __tablename__ = "performance_reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    employee_id = Column(
+        Integer,
+        ForeignKey("employees.id"),
+        nullable=False,
+        index=True,
+    )
+
+    reviewer_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    rating = Column(Float, nullable=False)
+
+    strengths = Column(Text, nullable=False)
+    areas_for_improvement = Column(Text, nullable=False)
+    feedback = Column(Text, nullable=False)
+
+    review_period = Column(String(50), nullable=False)
+    review_date = Column(Date, default=date.today, nullable=False)

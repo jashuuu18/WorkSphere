@@ -1,5 +1,5 @@
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -122,6 +122,7 @@ from pydantic import ConfigDict, model_validator
 
 
 
+
 class AttendanceResponse(BaseModel):
     id: int
     employee_id: int
@@ -133,8 +134,14 @@ class AttendanceResponse(BaseModel):
     late_minutes: int = 0
     worked_minutes: int | None = None
     overtime_minutes: int = 0
+    is_early_checkout: bool = False
+    early_checkout_minutes: int = 0
+    shift_name: str | None = None
+    shift_start_time: time | None = None
+    shift_end_time: time | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 
 
@@ -311,3 +318,101 @@ class AdminUserUpdate(BaseModel):
                 raise ValueError(f"{field} cannot be null")
 
         return self
+
+#----------------- SHIFT MANAGEMENT SCHEMAS ----------------
+class ShiftCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=50)
+    start_time: time
+    end_time: time
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 2:
+            raise ValueError("Shift name must contain at least 2 characters")
+        return value
+
+    @model_validator(mode="after")
+    def validate_shift_times(self):
+        if self.start_time == self.end_time:
+            raise ValueError(
+                "Start and end times cannot be identical. "
+                "For a 24-hour shift, a different duration rule is needed."
+            )
+        return self
+
+
+class ShiftResponse(BaseModel):
+    id: int
+    name: str
+    start_time: time
+    end_time: time
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmployeeShiftAssign(BaseModel):
+    employee_id: int = Field(gt=0)
+    shift_id: int = Field(gt=0)
+
+
+class EmployeeShiftResponse(BaseModel):
+    id: int
+    employee_id: int
+    employee_name: str
+    department: str
+    shift_id: int
+    shift_name: str
+    start_time: time
+    end_time: time
+    assigned_at: datetime
+
+#----------------- DOCUMENT MANAGEMENT SCHEMAS ----------------
+class DocumentResponse(BaseModel):
+    id: int
+    employee_id: int
+    file_name: str = Field(max_length=255)
+    uploaded_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentUploadResponse(BaseModel):
+    message: str
+    document: DocumentResponse
+
+#----------------- PERFORMANCE REVIEW SCHEMAS ----------------
+class PerformanceReviewCreate(BaseModel):
+    employee_id: int = Field(gt=0)
+    rating: float = Field(ge=1, le=5)
+    strengths: str = Field(min_length=1, max_length=5000)
+    areas_for_improvement: str = Field(min_length=1, max_length=5000)
+    feedback: str = Field(min_length=1, max_length=5000)
+    review_period: str = Field(min_length=1, max_length=50)
+    review_date: date | None = None
+
+
+class PerformanceReviewUpdate(BaseModel):
+    rating: float | None = Field(default=None, ge=1, le=5)
+    strengths: str | None = Field(default=None, min_length=1, max_length=5000)
+    areas_for_improvement: str | None = Field(
+        default=None, min_length=1, max_length=5000
+    )
+    feedback: str | None = Field(default=None, min_length=1, max_length=5000)
+    review_period: str | None = Field(default=None, min_length=1, max_length=50)
+    review_date: date | None = None
+
+
+class PerformanceReviewResponse(BaseModel):
+    id: int
+    employee_id: int
+    reviewer_id: int
+    rating: float
+    strengths: str
+    areas_for_improvement: str
+    feedback: str
+    review_period: str
+    review_date: date
+
+    model_config = ConfigDict(from_attributes=True)

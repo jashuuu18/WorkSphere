@@ -19,13 +19,23 @@ export default function AppLayout() {
     { label: "Dashboard", path: "/dashboard" },
     { label: "My Profile", path: "/profile" },
     { label: "Attendance", path: "/attendance" },
+    { label: "Shift Management", path: "/shifts" },
     { label: "Leave Management", path: "/leaves" },
+    { label: "Leave Calendar", path: "/leave-calendar" },
     { label: "Leave Balances", path: "/leave-balances" },
     { label: "Payroll", path: "/payroll" },
     { label: "Notifications", path: "/notifications" },
+    { label: "Documents", path: "/documents" },
+    { label: "Performance Reviews", path: "/performance-reviews" },
+    { label: "Analytics", path: "/analytics" },
+    { label: "Smart Alerts", path: "/smart-alerts" },
+    { label: "Advanced Employee Search", path: "/advanced-employee-search" },
+
+
     ...(isManager
       ? [{ label: "Employees", path: "/employees" }]
       : []),
+
     ...(isAdmin
       ? [{ label: "User Management", path: "/users" }]
       : []),
@@ -80,6 +90,7 @@ const styles = {
     minHeight: "100vh",
     background: "#f8fafc",
   },
+
   header: {
     background: "#ffffff",
     borderBottom: "1px solid #e2e8f0",
@@ -90,17 +101,20 @@ const styles = {
     gap: 18,
     flexWrap: "wrap",
   },
+
   brand: {
     fontSize: 23,
     fontWeight: 800,
     color: "#1d4ed8",
   },
+
   nav: {
     display: "flex",
     flexWrap: "wrap",
     gap: 6,
     alignItems: "center",
   },
+
   link: {
     textDecoration: "none",
     color: "#475569",
@@ -108,26 +122,31 @@ const styles = {
     borderRadius: 7,
     fontSize: 14,
   },
+
   activeLink: {
     background: "#dbeafe",
     color: "#1d4ed8",
     fontWeight: 700,
   },
+
   userArea: {
     display: "flex",
     alignItems: "center",
     gap: 12,
     flexWrap: "wrap",
   },
+
   username: {
     color: "#334155",
     fontSize: 14,
   },
+
   role: {
     color: "#64748b",
     fontSize: 12,
     fontWeight: 700,
   },
+
   logout: {
     background: "#dc2626",
     color: "#ffffff",
@@ -136,6 +155,7 @@ const styles = {
     borderRadius: 7,
     cursor: "pointer",
   },
+
   content: {
     padding: "8px 0 30px",
   },

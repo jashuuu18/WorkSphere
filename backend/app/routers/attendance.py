@@ -1,6 +1,6 @@
 
 import math
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
@@ -12,9 +12,11 @@ from app.models import (
     Attendance,
     AttendanceStatus,
     Employee,
+    EmployeeShift,
     EmployeeStatus,
     Leave,
     LeaveStatus,
+    Shift,
     User,
     UserRole,
 )
@@ -22,7 +24,7 @@ from app.schemas import AttendanceResponse
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
-# Work schedule. Change these values to match your organisation.
+# Default schedule for employees without an assigned shift.
 WORK_START_TIME = time(9, 30)
 WORK_END_TIME = time(18, 30)
 
@@ -41,21 +43,68 @@ def get_employee_for_user(db: Session, user_id: int) -> Employee:
     return employee
 
 
-def attendance_data(record: Attendance) -> dict:
-    """Build an attendance response with calculated values."""
+def get_shift_for_employee(
+    db: Session, employee_id: int
+) -> Shift | None:
+    assignment = db.query(EmployeeShift).filter(
+        EmployeeShift.employee_id == employee_id
+    ).first()
+
+    if assignment is None:
+        return None
+
+    return db.query(Shift).filter(
+        Shift.id == assignment.shift_id
+    ).first()
+
+
+def get_shift_times(shift: Shift | None) -> tuple[time, time]:
+    if shift is None:
+        return WORK_START_TIME, WORK_END_TIME
+
+    return shift.start_time, shift.end_time
+
+
+def get_shift_start_datetime(
+    attendance_day: date, start_time: time
+) -> datetime:
+    return datetime.combine(attendance_day, start_time)
+
+
+def get_shift_end_datetime(
+    attendance_day: date,
+    start_time: time,
+    end_time: time,
+) -> datetime:
+    end_datetime = datetime.combine(attendance_day, end_time)
+
+    # An end time at or before the start time means the shift
+    # ends on the following calendar day.
+    if end_time <= start_time:
+        end_datetime += timedelta(days=1)
+
+    return end_datetime
+
+
+def attendance_data(record: Attendance, db: Session) -> dict:
     check_in = record.check_in
     check_out = record.check_out
+    shift = get_shift_for_employee(db, record.employee_id)
+
+    start_time, end_time = get_shift_times(shift)
 
     late_minutes = 0
     worked_minutes = None
     overtime_minutes = 0
+    early_checkout_minutes = 0
+
+    shift_start = get_shift_start_datetime(record.date, start_time)
+    shift_end = get_shift_end_datetime(
+        record.date, start_time, end_time
+    )
 
     if check_in is not None:
-        check_in_time = check_in.time()
-        late_seconds = (
-            datetime.combine(record.date, check_in_time)
-            - datetime.combine(record.date, WORK_START_TIME)
-        ).total_seconds()
+        late_seconds = (check_in - shift_start).total_seconds()
 
         if late_seconds > 0:
             late_minutes = math.ceil(late_seconds / 60)
@@ -64,12 +113,12 @@ def attendance_data(record: Attendance) -> dict:
         worked_seconds = (check_out - check_in).total_seconds()
         worked_minutes = max(0, math.floor(worked_seconds / 60))
 
-        overtime_seconds = (
-            datetime.combine(record.date, check_out.time())
-            - datetime.combine(record.date, WORK_END_TIME)
-        ).total_seconds()
+        if check_out < shift_end:
+            early_seconds = (shift_end - check_out).total_seconds()
+            early_checkout_minutes = math.ceil(early_seconds / 60)
 
-        if overtime_seconds > 0:
+        if check_out > shift_end:
+            overtime_seconds = (check_out - shift_end).total_seconds()
             overtime_minutes = math.floor(overtime_seconds / 60)
 
     return {
@@ -87,6 +136,11 @@ def attendance_data(record: Attendance) -> dict:
         "late_minutes": late_minutes,
         "worked_minutes": worked_minutes,
         "overtime_minutes": overtime_minutes,
+        "is_early_checkout": early_checkout_minutes > 0,
+        "early_checkout_minutes": early_checkout_minutes,
+        "shift_name": shift.name if shift else None,
+        "shift_start_time": start_time,
+        "shift_end_time": end_time,
     }
 
 
@@ -100,23 +154,38 @@ def check_in(
     current_user: User = Depends(get_current_user),
 ):
     employee = get_employee_for_user(db, current_user.id)
-    today = date.today()
+    now = datetime.now()
+    today = now.date()
+
+    shift = get_shift_for_employee(db, employee.id)
+    start_time, end_time = get_shift_times(shift)
+
+    # For overnight shifts, early-morning check-in belongs to
+    # the shift that began the previous calendar day.
+    attendance_day = today
+
+    if (
+        shift is not None
+        and end_time <= start_time
+        and now.time() <= end_time
+    ):
+        attendance_day = today - timedelta(days=1)
 
     existing = db.query(Attendance).filter(
         Attendance.employee_id == employee.id,
-        Attendance.date == today,
+        Attendance.date == attendance_day,
     ).first()
 
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Attendance already exists for today",
+            detail="Attendance already exists for this shift date",
         )
 
     record = Attendance(
         employee_id=employee.id,
-        date=today,
-        check_in=datetime.now(),
+        date=attendance_day,
+        check_in=now,
         status=AttendanceStatus.PRESENT,
     )
 
@@ -128,10 +197,10 @@ def check_in(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Attendance already exists for today",
+            detail="Attendance already exists for this shift date",
         )
 
-    return attendance_data(record)
+    return attendance_data(record, db)
 
 
 @router.post(
@@ -143,30 +212,40 @@ def check_out(
     current_user: User = Depends(get_current_user),
 ):
     employee = get_employee_for_user(db, current_user.id)
-    today = date.today()
+    now = datetime.now()
+    today = now.date()
 
-    record = db.query(Attendance).filter(
-        Attendance.employee_id == employee.id,
-        Attendance.date == today,
-    ).first()
+    shift = get_shift_for_employee(db, employee.id)
+    start_time, end_time = get_shift_times(shift)
 
-    if record is None or record.check_in is None:
+    candidate_dates = [today]
+
+    if shift is not None and end_time <= start_time:
+        candidate_dates.append(today - timedelta(days=1))
+
+    record = (
+        db.query(Attendance)
+        .filter(
+            Attendance.employee_id == employee.id,
+            Attendance.date.in_(candidate_dates),
+            Attendance.check_in.isnot(None),
+            Attendance.check_out.is_(None),
+        )
+        .order_by(Attendance.date.desc())
+        .first()
+    )
+
+    if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Check in before checking out",
+            detail="No open check-in was found for your current shift",
         )
 
-    if record.check_out is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You have already checked out today",
-        )
-
-    record.check_out = datetime.now()
+    record.check_out = now
     db.commit()
     db.refresh(record)
 
-    return attendance_data(record)
+    return attendance_data(record, db)
 
 
 @router.get(
@@ -198,7 +277,8 @@ def my_attendance(
         query = query.filter(Attendance.date <= end_date)
 
     records = query.order_by(Attendance.date.desc()).all()
-    return [attendance_data(record) for record in records]
+
+    return [attendance_data(record, db) for record in records]
 
 
 @router.get(
@@ -247,18 +327,21 @@ def list_attendance(
         .all()
     )
 
-    return [attendance_data(record) for record in records]
+    return [attendance_data(record, db) for record in records]
 
 
 @router.post("/mark-absent")
 def mark_absent(
-    attendance_date: date = Query(..., description="Date to mark absent, YYYY-MM-DD"),
+    attendance_date: date = Query(
+        ...,
+        description="Shift start date to mark absent, YYYY-MM-DD",
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(
         require_roles(UserRole.HR, UserRole.ADMIN)
     ),
 ):
-    """Mark eligible active employees absent for a past working day."""
+    """Mark eligible employees absent after their assigned shift ends."""
 
     today = date.today()
 
@@ -274,12 +357,6 @@ def mark_absent(
             detail="Weekends are not eligible for automatic absence marking",
         )
 
-    if attendance_date == today and datetime.now().time() < WORK_END_TIME:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Today's attendance can be marked absent only after work ends",
-        )
-
     employees = db.query(Employee).filter(
         Employee.status == EmployeeStatus.ACTIVE
     ).all()
@@ -287,6 +364,9 @@ def mark_absent(
     marked_absent = 0
     skipped_existing = 0
     skipped_on_leave = 0
+    skipped_shift_not_ended = 0
+
+    now = datetime.now()
 
     try:
         for employee in employees:
@@ -297,6 +377,17 @@ def mark_absent(
 
             if existing is not None:
                 skipped_existing += 1
+                continue
+
+            shift = get_shift_for_employee(db, employee.id)
+            start_time, end_time = get_shift_times(shift)
+
+            shift_end = get_shift_end_datetime(
+                attendance_date, start_time, end_time
+            )
+
+            if attendance_date == today and now < shift_end:
+                skipped_shift_not_ended += 1
                 continue
 
             approved_leave = db.query(Leave).filter(
@@ -335,5 +426,6 @@ def mark_absent(
         "marked_absent": marked_absent,
         "skipped_existing": skipped_existing,
         "skipped_on_approved_leave": skipped_on_leave,
+        "skipped_shift_not_ended": skipped_shift_not_ended,
         "message": "Absence marking completed",
     }
