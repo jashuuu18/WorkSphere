@@ -30,6 +30,13 @@ export default function AppLayout() {
     { label: "Analytics", path: "/analytics" },
     { label: "Smart Alerts", path: "/smart-alerts" },
     { label: "Advanced Employee Search", path: "/advanced-employee-search" },
+    { label: "Onboarding", path: "/onboarding" },
+    { label: "Resignations", path: "/resignations" },
+    { label: "Announcements", path: "/announcements" },
+    { label: "Tasks", path: "/tasks" },
+    { label: "Reports", path: "/reports" },
+    { label: "Feedback", path: "/feedback" },
+    { label: "Settings", path: "/settings" },
 
 
     ...(isManager

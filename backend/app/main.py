@@ -1,6 +1,10 @@
 
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,6 +13,13 @@ from app.dependencies import require_roles
 from app.models import (
     Document,
     PerformanceReview,
+    Onboarding,
+    Resignation,
+    Announcement,
+    Task,
+    Feedback,
+    UserNotificationPreference,
+    TaskStatus,
     User,
     UserRole,
 )
@@ -26,6 +37,13 @@ from app.routers import (
     documents,
     performance_reviews,
     analytics,
+    onboarding,
+    resignations,
+    announcements,
+    tasks,
+    exports,
+    feedback,
+    settings,
 )
 from app.services.smart_alerts import (
     start_smart_alert_scheduler,
@@ -86,6 +104,13 @@ app.include_router(shifts.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(performance_reviews.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
+app.include_router(onboarding.router, prefix="/api/v1")
+app.include_router(resignations.router, prefix="/api/v1")
+app.include_router(announcements.router, prefix="/api/v1")
+app.include_router(tasks.router, prefix="/api/v1")
+app.include_router(exports.router, prefix="/api/v1")
+app.include_router(feedback.router, prefix="/api/v1")
+app.include_router(settings.router, prefix="/api/v1")
 
 
 # Health endpoints

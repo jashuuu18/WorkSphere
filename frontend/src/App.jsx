@@ -21,6 +21,14 @@ import PerformanceReviews from "./pages/PerformanceReviews";
 import Analytics from "./pages/Analytics";
 import SmartAlerts from "./pages/SmartAlerts";
 import AdvancedEmployeeSearch from "./pages/AdvancedEmployeeSearch";
+import Onboarding from "./pages/Onboarding";
+import Resignations from "./pages/Resignations";
+import Announcements from "./pages/Announcements";
+import Tasks from "./pages/Tasks";
+import Reports from "./pages/Reports";
+import Feedback from "./pages/Feedback";
+import Settings from "./pages/Settings";
+
 
 export default function App() {
   return (
@@ -46,6 +54,14 @@ export default function App() {
             <Route path="/payroll" element={<Payroll />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/smart-alerts" element={<SmartAlerts />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/resignations" element={<Resignations />} />
+            <Route path="/announcements" element={<Announcements/>} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/settings" element={<Settings />} />
+
 
             {/* EMPLOYEE, HR and ADMIN */}
             <Route path="/shifts" element={<Shifts />} />

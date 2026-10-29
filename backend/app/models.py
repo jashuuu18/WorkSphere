@@ -52,6 +52,20 @@ class AttendanceStatus(str, PyEnum):
     HALF_DAY = "HALF_DAY"
 
 
+class OnboardingStatus(str, PyEnum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+
+
+class ResignationStatus(str, PyEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+class TaskStatus(str, PyEnum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+
 # ---------------- USER MODEL ----------------
 
 class User(Base):
@@ -402,3 +416,144 @@ class PerformanceReview(Base):
 
     review_period = Column(String(50), nullable=False)
     review_date = Column(Date, default=date.today, nullable=False)
+
+#---------------- ONBOARDING MODEL ----------------
+class Onboarding(Base):
+    __tablename__ = "onboarding"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    employee_id = Column(
+        Integer,
+        ForeignKey("employees.id"),
+        nullable=False,
+        index=True,
+    )
+
+    task_name = Column(String(200), nullable=False)
+
+    status = Column(
+        Enum(OnboardingStatus, name="onboarding_status"),
+        nullable=False,
+        default=OnboardingStatus.PENDING,
+    )
+
+    due_date = Column(Date, nullable=False)
+
+#---------------- RESIGNATION MODEL ----------------
+class Resignation(Base):
+    __tablename__ = "resignations"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    employee_id = Column(
+        Integer,
+        ForeignKey("employees.id"),
+        nullable=False,
+        index=True,
+    )
+
+    reason = Column(String(5000), nullable=False)
+
+    # Notice period measured in days.
+    notice_period = Column(Integer, nullable=False)
+
+    status = Column(
+        Enum(ResignationStatus, name="resignation_status"),
+        nullable=False,
+        default=ResignationStatus.PENDING,
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+#---------------- ANNOUNCEMENT MODEL ----------------
+class Announcement(Base):
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    title = Column(String(200), nullable=False)
+
+    message = Column(String(10000), nullable=False)
+
+    created_by = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+#---------------- TASK MODEL ----------------
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    assigned_to = Column(
+        Integer,
+        ForeignKey("employees.id"),
+        nullable=False,
+        index=True,
+    )
+
+    title = Column(String(200), nullable=False)
+
+    description = Column(Text, nullable=False, default="")
+
+    due_date = Column(Date, nullable=False)
+
+    status = Column(
+        Enum(TaskStatus, name="task_status"),
+        nullable=False,
+        default=TaskStatus.PENDING,
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+#---------------- FEEDBACK MODEL ----------------
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(
+        Integer,
+        ForeignKey("employees.id"),
+        nullable=False,
+        index=True,
+    )
+    message = Column(Text, nullable=False)
+    rating = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+#---------------- NOTIFICATION PREFERENCES MODEL ----------------
+
+class UserNotificationPreference(Base):
+    __tablename__ = "user_notification_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+    email_notifications = Column(Boolean, nullable=False, default=True)
+    in_app_notifications = Column(Boolean, nullable=False, default=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
