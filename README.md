@@ -1,49 +1,20 @@
 # WorkSphere – HR Management System (HRMS)
 
-## 1. Project Overview
+## Project Overview
+WorkSphere is a web-based Human Resource Management System built to simplify employee management and HR operations. It provides role-based access to employee records, attendance, leave management, payroll, reports, feedback, and account settings.
 
-WorkSphere is a web-based Human Resource Management System (HRMS) developed using **FastAPI and React**. It helps organizations manage employee information, attendance, leave requests, payroll, performance reviews, documents, notifications, and HR operations through a centralized platform.
+## Technologies Used
+- **Frontend:** React, Vite, JavaScript, CSS
+- **Backend:** Python, FastAPI
+- **Database:** SQLAlchemy with the configured database
+- **Authentication:** JWT
+- **Validation:** Pydantic
+- **API Testing:** Swagger UI
+- **Version Control:** Git and GitHub
 
-The system uses role-based access control to provide different permissions for Employees, HR personnel, and Administrators.
+## Key Features — Modules 1–27
 
-## 2. Objectives
-
-- Centralize employee information and HR operations.
-- Manage employee attendance and leave requests.
-- Simplify payroll and salary record management.
-- Maintain employee documents and performance reviews.
-- Provide dashboards, analytics, and reports.
-- Send notifications and attendance alerts.
-- Secure application access using JWT authentication and role-based permissions.
-
-## 3. Technology Stack
-
-**Backend**
-- Python
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- JWT authentication
-- SQLite / configured database
-
-**Frontend**
-- React
-- Vite
-- JavaScript
-- HTML and CSS
-- Axios
-- React Router
-
-**Development and Testing**
-- Visual Studio Code
-- PowerShell
-- Git and GitHub
-- FastAPI Swagger UI
-- Pytest, where configured
-
-## 4. Main Features and Modules
-
-1. User Authentication and Login
+1. User Registration and Authentication
 2. Employee Management
 3. Attendance Management
 4. Leave Management and Approval
@@ -52,53 +23,39 @@ The system uses role-based access control to provide different permissions for E
 7. Notifications System
 8. Role-Based Access Control (RBAC)
 9. Advanced HR Features
-10. Employee Profile Management
-11. Employee Search and Filtering
-12. Attendance and Leave Reports
-13. Administrative Controls
-14. Audit and Security Features
-15. HR Workflow Management
-16. Document Management
-17. Performance Management
-18. Advanced Analytics and Reports
-19. Smart Notifications and Alerts
-20. Advanced Employee Search and Filters
+10. Audit and Account Controls
+11. Advanced Employee Operations
+12. HR Workflow Enhancements
+13. Additional HR Management Features
+14. Employee Operations Enhancements
+15. HRMS Security and Workflow Improvements
+16. Employee Document Management
+17. Performance Reviews
+18. Advanced Analytics
+19. Smart Alerts
+20. Advanced Employee Search and Filtering
+21. Employee Onboarding
+22. Resignation and Exit Management
+23. Internal Announcements
+24. Task Assignment and Tracking
+25. Third-Party Integrations and CSV Report Exports
+26. Employee Feedback System
+27. Profile and Settings Management
 
-*Note: The exact implementation and completion status of each module depend on the current project code.*
+## User Roles
+- **EMPLOYEE:** Access personal information and permitted employee features.
+- **HR:** Manage employee records, HR workflows, and authorized reports.
+- **ADMIN:** Access administrative features and authorized management operations.
 
-## 5. User Roles
+Access is controlled through authentication and role-based authorization.
 
-### Employee
-- View personal employee information.
-- Mark attendance and view attendance history.
-- Apply for leave and view leave status.
-- View available payroll information.
-- Access personal documents and performance reviews.
-- View notifications.
-
-### HR
-- Manage employee records.
-- Review and process leave requests.
-- Manage payroll records.
-- Access permitted reports and analytics.
-- Manage performance reviews and employee documents.
-
-### Administrator
-- Access administrative features.
-- Manage permitted HR operations.
-- Access dashboards, analytics, and reports.
-- Perform authorized administrative actions.
-
-Access is controlled by the permissions implemented in the backend.
-
-## 6. Project Structure
+## Project Structure
 
 ```text
 WorkSphere/
 ├── backend/
 │   ├── app/
 │   │   ├── routers/
-│   │   ├── services/
 │   │   ├── models.py
 │   │   ├── schemas.py
 │   │   ├── database.py
@@ -108,39 +65,26 @@ WorkSphere/
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
 │   │   ├── pages/
+│   │   ├── components/
 │   │   ├── services/
 │   │   └── App.jsx
-│   ├── package.json
-│   └── index.html
-├── README.md
-└── .gitignore
+│   └── package.json
+└── README.md
 ```
 
-*The structure above is representative. Your actual folders and files may differ.*
+## Installation and Setup
 
-## 7. Installation and Setup
-
-### Prerequisites
-
-Install the following:
-- Python
-- Node.js and npm
-- Git (optional, for version control)
-
-### Step 1: Clone the Repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/jashuuu18/WorkSphere.git
 cd WorkSphere
 ```
 
-Alternatively, open your existing WorkSphere project folder.
+### 2. Backend Setup
 
-### Step 2: Set Up the Backend
-
-Open a terminal:
+Open a terminal in the backend directory:
 
 ```powershell
 cd backend
@@ -149,27 +93,17 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-Create or configure the `.env` file with the environment variables required by the application. Use a secure JWT secret and never commit credentials to GitHub.
+Configure the required environment variables in `backend/.env`, including database and JWT settings. Configure SMTP settings if email integration is required.
 
-### Step 3: Start the Backend
-
-From the `backend` directory, with the virtual environment activated:
+Start the backend:
 
 ```powershell
 uvicorn app.main:app --reload
 ```
 
-Backend URL:
+### 3. Frontend Setup
 
-http://127.0.0.1:8000
-
-Swagger API documentation:
-
-http://127.0.0.1:8000/docs
-
-### Step 4: Set Up the Frontend
-
-Open another terminal:
+Open a second terminal:
 
 ```powershell
 cd frontend
@@ -177,71 +111,44 @@ npm install
 npm run dev
 ```
 
-Open the local URL displayed in the terminal, commonly:
+Open the local frontend URL displayed by Vite, usually `http://localhost:5173`.
 
-http://localhost:5173
+## API Documentation
 
-Keep the backend and frontend running in separate terminals.
+Once the backend is running, open:
 
-## 8. API Testing
+- **Swagger UI:** http://127.0.0.1:8000/docs
+- **ReDoc:** http://127.0.0.1:8000/redoc
 
-FastAPI provides interactive API documentation through Swagger UI.
+API routes use the `/api/v1` prefix where configured.
 
-1. Start the backend.
-2. Open `http://127.0.0.1:8000/docs`.
-3. Register or log in using an authorized account.
-4. Obtain the JWT access token.
-5. Click **Authorize** and enter the token as required by the configured authentication scheme.
-6. Test the available endpoints using valid request data.
-7. Verify successful responses and expected validation or permission errors.
+## Security Features
+- JWT-based authentication
+- Role-based authorization
+- Protected API endpoints
+- Pydantic request validation
+- Password hashing and password verification
+- Employee ownership checks
+- Environment-based configuration
+- Restricted access to sensitive employee and payroll reports
 
-The API prefix used by the application is `/api/v1`.
+## Testing
+- Test API endpoints using Swagger UI.
+- Verify authentication and role permissions.
+- Test employee, attendance, leave, and payroll workflows.
+- Validate onboarding, resignations, announcements, and tasks.
+- Test CSV exports and email integration.
+- Verify feedback submission and profile settings.
 
-## 9. Security Features
+## Future Enhancements
+- Google Calendar integration
+- Advanced reporting and PDF exports
+- Enhanced notification delivery and preferences
+- Automated testing and deployment
+- Additional analytics and HR workflow automation
 
-- JWT-based authentication.
-- Role-based authorization for protected endpoints.
-- Password hashing.
-- Request validation using Pydantic.
-- Database-backed employee and HR records.
-- Access restrictions for personal employee information.
-- Environment-based configuration for secrets and application settings.
-- Validation and error handling for invalid requests.
+## Repository
+GitHub: https://github.com/jashuuu18/WorkSphere
 
-Security depends on the actual implementation and configuration of the application.
-
-## 10. Database
-
-The backend uses SQLAlchemy models to represent application data, such as:
-
-- Users and roles
-- Employee profiles
-- Attendance records
-- Leave requests
-- Payroll records
-- Notifications
-- Employee documents
-- Performance reviews
-
-The database engine and connection settings are configured in the backend.
-
-## 11. Version Control
-
-The project repository is available at:
-
-https://github.com/jashuuu18/WorkSphere
-
-Use Git to track code changes and maintain versions of the project. Do not commit virtual environments, dependency folders, database files containing private data, or `.env` files containing secrets.
-
-## 12. Future Enhancements
-
-- Email notifications and reminders.
-- Exportable payroll and analytics reports.
-- Enhanced audit logging.
-- Additional dashboard visualizations.
-- Automated testing and continuous integration.
-- Deployment to a production hosting environment.
-
-## 13. Conclusion
-
-WorkSphere HRMS provides a centralized platform for managing essential HR activities. By combining FastAPI, React, database models, JWT authentication, and role-based access control, the project demonstrates full-stack web development and the implementation of common enterprise HR workflows.
+## Conclusion
+WorkSphere HRMS brings essential employee management and HR workflows into one application. Its modular architecture supports authentication, employee operations, reporting, and additional HR features through a React frontend and FastAPI backend.
